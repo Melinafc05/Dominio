@@ -2,63 +2,67 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Resolución de Desigualdades</title>
+  <title>Desigualdades con Gráfica</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 30px auto;
-      background-color: #f0f0f0;
+      margin: 20px auto;
+      max-width: 700px;
+      background-color: #f9f9f9;
       padding: 20px;
-      border-radius: 10px;
+      border-radius: 12px;
     }
-
     input, button {
       width: 100%;
       padding: 10px;
       font-size: 16px;
       margin-top: 10px;
     }
-
     #resultado {
-      background-color: white;
-      padding: 15px;
       margin-top: 20px;
-      border-radius: 8px;
+      padding: 15px;
+      background-color: white;
       border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    canvas {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-<h2>Resolver Desigualdades Lineales y Cuadráticas</h2>
-<p>Ejemplos: <code>x^2 + 2x - 3 > 0</code> o <code>2x - 4 &lt;= 0</code></p>
+<h2>Resolver desigualdades y graficar</h2>
+<p>Ejemplos: <code>x^2 - 4 > 0</code>, <code>2x - 5 &lt;= 0</code></p>
 
-<input type="text" id="desigualdad" placeholder="Ingresa la desigualdad aquí">
+<input type="text" id="input" placeholder="Escribe la desigualdad aquí...">
 <button onclick="resolver()">Resolver</button>
 
 <div id="resultado"></div>
+<canvas id="grafica" width="600" height="400"></canvas>
 
-<!-- Cargar math.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.js"></script>
+<!-- Math.js y Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-function resolver() {
-  const input = document.getElementById("desigualdad").value.replace(/\s/g, '');
-  const resultado = document.getElementById("resultado");
+let chart = null;
 
+function resolver() {
+  const input = document.getElementById("input").value.replace(/\s/g, '');
+  const resultado = document.getElementById("resultado");
   const match = input.match(/^(.+)([<>]=?|>=|<=)(.+)$/);
+
   if (!match) {
-    resultado.innerHTML = "⚠️ Formato inválido. Usa expresiones como x^2+2x-3>0";
+    resultado.innerHTML = "⚠️ Usa formato como: x^2 - 4 > 0";
     return;
   }
 
   const izquierda = match[1];
   const operador = match[2];
   const derecha = match[3];
-
-  // Simplificamos la desigualdad a forma: f(x) > 0
   const expr = `${izquierda}-(${derecha})`;
+
   let f;
   try {
     f = math.simplify(expr);
@@ -67,9 +71,8 @@ function resolver() {
     return;
   }
 
-  // Obtenemos coeficientes del polinomio
   const exprStr = f.toString();
-  let coef;
+  let coef = [];
   try {
     coef = math.polyCoefficients(math.parse(exprStr), 'x');
   } catch {
@@ -77,67 +80,109 @@ function resolver() {
     return;
   }
 
+  const funcion = math.parse(exprStr).compile();
+  graficar(funcion);
+
   if (coef.length === 2) {
-    resolverLineal(coef, operador, resultado);
+    mostrarLineal(coef, operador, resultado);
   } else if (coef.length === 3) {
-    resolverCuadratica(coef, operador, resultado);
+    mostrarCuadratica(coef, operador, resultado);
   } else {
     resultado.innerHTML = "❌ Solo se admiten polinomios de grado 1 o 2.";
   }
 }
 
-function resolverLineal([m, b], op, div) {
+function mostrarLineal([m, b], op, div) {
   if (m === 0) {
-    div.innerHTML = b + interpretacionConstante(op);
+    const cumple = evaluarConstante(b, op);
+    div.innerHTML = `La función es constante: f(x) = ${b}<br>Resultado: ${cumple}`;
     return;
   }
 
   const x = -b / m;
-  let sol = "";
+  let intervalo = "";
 
-  if (op === ">") sol = (m > 0) ? `x > ${x}` : `x < ${x}`;
-  if (op === ">=") sol = (m > 0) ? `x ≥ ${x}` : `x ≤ ${x}`;
-  if (op === "<") sol = (m > 0) ? `x < ${x}` : `x > ${x}`;
-  if (op === "<=") sol = (m > 0) ? `x ≤ ${x}` : `x ≥ ${x}`;
+  if (op === ">") intervalo = (m > 0) ? `x > ${x}` : `x < ${x}`;
+  if (op === ">=") intervalo = (m > 0) ? `x ≥ ${x}` : `x ≤ ${x}`;
+  if (op === "<") intervalo = (m > 0) ? `x < ${x}` : `x > ${x}`;
+  if (op === "<=") intervalo = (m > 0) ? `x ≤ ${x}` : `x ≥ ${x}`;
 
-  div.innerHTML = `<strong>Solución:</strong> ${sol}`;
+  div.innerHTML = `<strong>Solución:</strong> ${intervalo}`;
 }
 
-function resolverCuadratica([a, b, c], op, div) {
+function mostrarCuadratica([a, b, c], op, div) {
   const D = b*b - 4*a*c;
+  let mensaje = "";
 
   if (D < 0) {
     const cumple = (a > 0 && (op === ">" || op === ">=")) || (a < 0 && (op === "<" || op === "<="));
-    div.innerHTML = cumple ? "La desigualdad se cumple para todos los x reales." : "No hay solución real.";
-    return;
-  }
-
-  const x1 = (-b - Math.sqrt(D)) / (2*a);
-  const x2 = (-b + Math.sqrt(D)) / (2*a);
-  const [r1, r2] = [x1, x2].sort((a, b) => a - b);
-
-  let sol = "";
-
-  if (a > 0) {
-    if (op === ">") sol = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
-    if (op === ">=") sol = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
-    if (op === "<") sol = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
-    if (op === "<=") sol = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
+    mensaje = cumple ? "La desigualdad se cumple para todo x real." : "No hay solución real.";
   } else {
-    if (op === ">") sol = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
-    if (op === ">=") sol = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
-    if (op === "<") sol = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
-    if (op === "<=") sol = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
+    const x1 = (-b - Math.sqrt(D)) / (2*a);
+    const x2 = (-b + Math.sqrt(D)) / (2*a);
+    const [r1, r2] = [x1, x2].sort((a, b) => a - b);
+    let intervalo = "";
+
+    if (a > 0) {
+      if (op === ">") intervalo = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
+      if (op === ">=") intervalo = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
+      if (op === "<") intervalo = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
+      if (op === "<=") intervalo = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
+    } else {
+      if (op === ">") intervalo = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
+      if (op === ">=") intervalo = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
+      if (op === "<") intervalo = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
+      if (op === "<=") intervalo = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
+    }
+
+    mensaje = `<strong>Raíces:</strong> x₁ = ${r1.toFixed(2)}, x₂ = ${r2.toFixed(2)}<br><strong>Intervalo que satisface la desigualdad:</strong> ${intervalo}`;
   }
 
-  div.innerHTML = `<strong>Raíces:</strong> x₁ = ${r1.toFixed(2)}, x₂ = ${r2.toFixed(2)}<br><strong>Solución:</strong> ${sol}`;
+  div.innerHTML = mensaje;
 }
 
-function interpretacionConstante(op) {
-  if (op === ">") return (0 > 0) ? " → Siempre verdadera" : " → Falsa para todo x";
-  if (op === ">=") return (0 >= 0) ? " → Verdadera para todo x" : " → Falsa para todo x";
-  if (op === "<") return (0 < 0) ? " → Siempre verdadera" : " → Falsa para todo x";
-  if (op === "<=") return (0 <= 0) ? " → Verdadera para todo x" : " → Falsa para todo x";
+function evaluarConstante(b, op) {
+  const cero = 0;
+  if (op === ">") return b > cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
+  if (op === ">=") return b >= cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
+  if (op === "<") return b < cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
+  if (op === "<=") return b <= cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
+}
+
+function graficar(funcion) {
+  const x_vals = [], y_vals = [];
+  for (let x = -10; x <= 10; x += 0.1) {
+    x_vals.push(x);
+    try {
+      y_vals.push(funcion.evaluate({x}));
+    } catch {
+      y_vals.push(null);
+    }
+  }
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('grafica').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: x_vals,
+      datasets: [{
+        label: 'f(x)',
+        data: y_vals,
+        borderColor: 'blue',
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: 'x' } },
+        y: { title: { display: true, text: 'f(x)' }, beginAtZero: false }
+      }
+    }
+  });
 }
 </script>
 
