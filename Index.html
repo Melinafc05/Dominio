@@ -1,1 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Resolución de Desigualdades</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 30px auto;
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    #resultado {
+      margin-top: 20px;
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Resolución de Desigualdades Lineales y Cuadráticas</h2>
+<p>Ejemplos válidos: <code>x^2 + 2x - 3 > 0</code>, <code>2x - 4 &lt;= 0</code></p>
+
+<input type="text" id="inputDesigualdad" placeholder="Escribe la desigualdad aquí...">
+<button onclick="resolverDesigualdad()">Resolver</button>
+
+<div id="resultado"></div>
+
+<script>
+  function resolverDesigualdad() {
+    const input = document.getElementById("inputDesigualdad").value.replace(/\s/g, "");
+    const resultado = document.getElementById("resultado");
+    const match = input.match(/^(.+)([<>]=?|>=)(.+)$/);
+
+    if (!match) {
+      resultado.innerHTML = "⚠️ Formato inválido. Usa expresiones como x^2+2x-3>0";
+      return;
+    }
+
+    const lhs = match[1];
+    const op = match[2];
+    const rhs = match[3];
+
+    // Convertimos la desigualdad a forma polinómica: lhs - rhs > 0
+    const expresion = lhs + "-(" + rhs + ")";
+    const f = math.parse(expresion).simplify();
+    const coeficientes = f.coefficients ? f.coefficients : getCoeficientes(f.toString());
+
+    if (coeficientes.length === 2) {
+      resolverLineal(coeficientes, op, resultado);
+    } else if (coeficientes.length === 3) {
+      resolverCuadratica(coeficientes, op, resultado);
+    } else {
+      resultado.innerHTML = "❌ Solo se permiten polinomios de grado 1 o 2.";
+    }
+  }
+
+  function getCoeficientes(expr) {
+    const poly = math.polyCoefficients(math.parse(expr), 'x');
+    return poly.reverse();
+  }
+
+  function resolverLineal([b, c], op, div) {
+    const x = -c / b;
+    let intervalo = "";
+
+    if (op === ">") intervalo = `x > ${x.toFixed(2)}`;
+    if (op === ">=") intervalo = `x ≥ ${x.toFixed(2)}`;
+    if (op === "<") intervalo = `x < ${x.toFixed(2)}`;
+    if (op === "<=") intervalo = `x ≤ ${x.toFixed(2)}`;
+
+    div.innerHTML = `<strong>Resultado:</strong><br>Solución: ${intervalo}`;
+  }
+
+  function resolverCuadratica([a, b, c], op, div) {
+    const D = b * b - 4 * a * c;
+    let mensaje = "";
+
+    if (D < 0) {
+      if ((op === ">" && a > 0) || (op === "<" && a < 0)) {
+        mensaje = "La desigualdad se cumple para todos los x (∞ soluciones).";
+      } else {
+        mensaje = "No hay solución real para esta desigualdad.";
+      }
+    } else {
+      const x1 = (-b - Math.sqrt(D)) / (2 * a);
+      const x2 = (-b + Math.sqrt(D)) / (2 * a);
+
+      const [r1, r2] = [x1, x2].sort((a, b) => a - b);
+
+      if (a > 0) {
+        if (op === ">") mensaje = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
+        if (op === ">=") mensaje = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
+        if (op === "<") mensaje = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
+        if (op === "<=") mensaje = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
+      } else {
+        if (op === ">") mensaje = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
+        if (op === ">=") mensaje = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
+        if (op === "<") mensaje = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
+        if (op === "<=") mensaje = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
+      }
+    }
+
+    div.innerHTML = `<strong>Resultado:</strong><br>Solución: ${mensaje}`;
+  }
+</script>
+
+<!-- Incluimos Math.js para facilitar el análisis simbólico -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.js"></script>
+
+</body>
+</html>
 
