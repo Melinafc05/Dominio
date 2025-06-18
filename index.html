@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dominio y Rango de una Función</title>
+  <title>Dominio, Rango y Asíntotas</title>
   <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
@@ -35,10 +35,10 @@
 </head>
 <body>
 
-  <h1>Calculadora de Dominio y Rango</h1>
-  <p>Escribe una función matemática en términos de <strong>x</strong> (por ejemplo: <code>x^2</code>, <code>sqrt(x)</code>, <code>1/(x-2)</code>)</p>
+  <h1>Calculadora de Dominio, Rango y Asíntotas</h1>
+  <p>Ingresa una función matemática en términos de <strong>x</strong> (ej: <code>1/(x-2)</code>, <code>(x^2 - 1)/(x - 1)</code>, <code>x^2</code>)</p>
 
-  <input type="text" id="funcion" placeholder="Ej: x^2 - 4" />
+  <input type="text" id="funcion" placeholder="Ej: 1/(x-2)" />
   <button onclick="graficar()">Graficar y Calcular</button>
 
   <div id="resultado"></div>
@@ -50,39 +50,87 @@
       const f = math.compile(expr);
       const x_vals = [];
       const y_vals = [];
+      const discontinuidades = [];
+      const rango_vals = [];
 
-      for (let x = -100; x <= 100; x += 0.5) {
+      for (let x = -100; x <= 100; x += 0.2) {
         try {
-          const y = f.evaluate({x});
+          const y = f.evaluate({ x });
           if (isFinite(y)) {
             x_vals.push(x);
             y_vals.push(y);
+            rango_vals.push(y);
+          } else {
+            discontinuidades.push(x);
           }
         } catch (err) {
-          // Punto no válido (por ejemplo división por 0)
+          discontinuidades.push(x); // posible asíntota vertical
         }
       }
 
-      // Calcular dominio y rango estimados
-      const dominio = `[${Math.min(...x_vals).toFixed(2)}, ${Math.max(...x_vals).toFixed(2)}]`;
-      const rango = `[${Math.min(...y_vals).toFixed(2)}, ${Math.max(...y_vals).toFixed(2)}]`;
+      // Eliminar duplicados de discontinuidades
+      const asintotasV = [...new Set(discontinuidades.map(v => Math.round(v * 100) / 100))];
 
-      // Mostrar resultado
+      // Estimar asíntota horizontal (límites para x→±∞)
+      let limIzq = null, limDer = null;
+      try {
+        limIzq = f.evaluate({ x: -1e6 });
+        limDer = f.evaluate({ x: 1e6 });
+      } catch {}
+
+      const asintotasH = [];
+      if (isFinite(limIzq) && Math.abs(limIzq - limDer) < 1) {
+        asintotasH.push((limIzq + limDer) / 2);
+      }
+
+      const dominio = `[${Math.min(...x_vals).toFixed(2)}, ${Math.max(...x_vals).toFixed(2)}]`;
+      const rango = `[${Math.min(...rango_vals).toFixed(2)}, ${Math.max(...rango_vals).toFixed(2)}]`;
+
       document.getElementById('resultado').innerHTML = `
         <strong>Dominio estimado:</strong> ${dominio} <br>
-        <strong>Rango estimado:</strong> ${rango}
+        <strong>Rango estimado:</strong> ${rango} <br>
+        <strong>Asíntotas verticales estimadas:</strong> ${asintotasV.length > 0 ? asintotasV.join(', ') : 'Ninguna'}<br>
+        <strong>Asíntotas horizontales estimadas:</strong> ${asintotasH.length > 0 ? asintotasH.join(', ') : 'Ninguna'}
       `;
 
-      // Graficar
-      Plotly.newPlot('grafica', [{
+      const trazas = [{
         x: x_vals,
         y: y_vals,
         mode: 'lines',
+        name: `f(x) = ${expr}`,
         line: { color: '#007acc' }
-      }], {
+      }];
+
+      // Agregar asíntotas verticales
+      asintotasV.forEach(xa => {
+        trazas.push({
+          x: [xa, xa],
+          y: [-100, 100],
+          mode: 'lines',
+          name: `Asíntota vertical x=${xa}`,
+          line: { dash: 'dot', color: 'red' },
+          hoverinfo: 'none',
+          showlegend: false
+        });
+      });
+
+      // Agregar asíntotas horizontales
+      asintotasH.forEach(ya => {
+        trazas.push({
+          x: [-100, 100],
+          y: [ya, ya],
+          mode: 'lines',
+          name: `Asíntota horizontal y=${ya}`,
+          line: { dash: 'dot', color: 'green' },
+          hoverinfo: 'none',
+          showlegend: false
+        });
+      });
+
+      Plotly.newPlot('grafica', trazas, {
         title: `Gráfica de f(x) = ${expr}`,
         xaxis: { title: 'x' },
-        yaxis: { title: 'f(x)' }
+        yaxis: { title: 'f(x)', range: [-20, 20] }
       });
     }
   </script>
