@@ -8,17 +8,28 @@
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f4f6f8;
+      background: #f0f4f8;
       padding: 20px;
       text-align: center;
     }
 
+    h1 {
+      color: #333;
+    }
+
     input, button {
       padding: 10px;
-      font-size: 1rem;
+      font-size: 16px;
       margin: 10px;
       border-radius: 6px;
       border: 1px solid #ccc;
+      width: 250px;
+    }
+
+    button {
+      background-color: #007acc;
+      color: white;
+      cursor: pointer;
     }
 
     #resultado {
@@ -28,7 +39,7 @@
 
     #grafica {
       width: 90%;
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
     }
   </style>
@@ -36,10 +47,10 @@
 <body>
 
   <h1>Calculadora de Dominio, Rango y Asíntotas</h1>
-  <p>Ingresa una función matemática en términos de <strong>x</strong> (ej: <code>1/(x-2)</code>, <code>(x^2 - 1)/(x - 1)</code>, <code>x^2</code>)</p>
+  <p>Escribe una función en términos de <strong>x</strong> (ej: <code>1/(x-2)</code>, <code>x^2</code>, <code>sqrt(x)</code>)</p>
 
-  <input type="text" id="funcion" placeholder="Ej: 1/(x-2)" />
-  <button onclick="graficar()">Graficar y Calcular</button>
+  <input type="text" id="funcion" placeholder="Ej: 1/(x-2)">
+  <button onclick="graficar()">Graficar</button>
 
   <div id="resultado"></div>
   <div id="grafica"></div>
@@ -47,89 +58,92 @@
   <script>
     function graficar() {
       const expr = document.getElementById('funcion').value;
-      const f = math.compile(expr);
+      const funcion = math.compile(expr);
       const x_vals = [];
       const y_vals = [];
-      const discontinuidades = [];
-      const rango_vals = [];
+      const posiblesAsintotas = new Set();
+      const y_validos = [];
 
-      for (let x = -100; x <= 100; x += 0.2) {
+      let paso = 0.2;
+      let rangoX = [-20, 20];
+
+      for (let x = rangoX[0]; x <= rangoX[1]; x += paso) {
         try {
-          const y = f.evaluate({ x });
+          const y = funcion.evaluate({ x });
           if (isFinite(y)) {
             x_vals.push(x);
             y_vals.push(y);
-            rango_vals.push(y);
+            y_validos.push(y);
           } else {
-            discontinuidades.push(x);
+            posiblesAsintotas.add(parseFloat(x.toFixed(2)));
           }
-        } catch (err) {
-          discontinuidades.push(x); // posible asíntota vertical
+        } catch {
+          posiblesAsintotas.add(parseFloat(x.toFixed(2)));
         }
       }
 
-      // Eliminar duplicados de discontinuidades
-      const asintotasV = [...new Set(discontinuidades.map(v => Math.round(v * 100) / 100))];
+      // Agrupar asíntotas verticales cercanas (para evitar duplicados)
+      const asintotasVerticales = Array.from(posiblesAsintotas).filter((val, i, arr) =>
+        arr.findIndex(v => Math.abs(v - val) < 0.5) === i
+      );
 
-      // Estimar asíntota horizontal (límites para x→±∞)
-      let limIzq = null, limDer = null;
-      try {
-        limIzq = f.evaluate({ x: -1e6 });
-        limDer = f.evaluate({ x: 1e6 });
-      } catch {}
-
-      const asintotasH = [];
-      if (isFinite(limIzq) && Math.abs(limIzq - limDer) < 1) {
-        asintotasH.push((limIzq + limDer) / 2);
+      // Estimar asíntota horizontal evaluando en x→±∞
+      let y_izq, y_der;
+      try { y_izq = funcion.evaluate({ x: -1e6 }); } catch {}
+      try { y_der = funcion.evaluate({ x: 1e6 }); } catch {}
+      let asintotaHorizontal = null;
+      if (isFinite(y_izq) && isFinite(y_der) && Math.abs(y_izq - y_der) < 1e-2) {
+        asintotaHorizontal = ((y_izq + y_der) / 2).toFixed(2);
       }
 
-      const dominio = `[${Math.min(...x_vals).toFixed(2)}, ${Math.max(...x_vals).toFixed(2)}]`;
-      const rango = `[${Math.min(...rango_vals).toFixed(2)}, ${Math.max(...rango_vals).toFixed(2)}]`;
-
-      document.getElementById('resultado').innerHTML = `
-        <strong>Dominio estimado:</strong> ${dominio} <br>
-        <strong>Rango estimado:</strong> ${rango} <br>
-        <strong>Asíntotas verticales estimadas:</strong> ${asintotasV.length > 0 ? asintotasV.join(', ') : 'Ninguna'}<br>
-        <strong>Asíntotas horizontales estimadas:</strong> ${asintotasH.length > 0 ? asintotasH.join(', ') : 'Ninguna'}
+      // Mostrar resultados
+      const resultado = `
+        <strong>Dominio estimado:</strong> [${rangoX[0]}, ${rangoX[1]}]<br>
+        <strong>Rango estimado:</strong> [${Math.min(...y_validos).toFixed(2)}, ${Math.max(...y_validos).toFixed(2)}]<br>
+        <strong>Asíntotas verticales:</strong> ${asintotasVerticales.length > 0 ? asintotasVerticales.join(', ') : 'Ninguna'}<br>
+        <strong>Asíntota horizontal:</strong> ${asintotaHorizontal ?? 'Ninguna'}
       `;
+      document.getElementById('resultado').innerHTML = resultado;
 
+      // Crear trazas
       const trazas = [{
         x: x_vals,
         y: y_vals,
         mode: 'lines',
         name: `f(x) = ${expr}`,
-        line: { color: '#007acc' }
+        line: { color: 'blue' }
       }];
 
-      // Agregar asíntotas verticales
-      asintotasV.forEach(xa => {
+      // Agregar asíntotas verticales como líneas rojas punteadas
+      asintotasVerticales.forEach(x => {
         trazas.push({
-          x: [xa, xa],
+          x: [x, x],
           y: [-100, 100],
           mode: 'lines',
-          name: `Asíntota vertical x=${xa}`,
-          line: { dash: 'dot', color: 'red' },
+          name: `Asíntota vertical en x = ${x}`,
+          line: { dash: 'dot', color: 'red', width: 2 },
           hoverinfo: 'none',
           showlegend: false
         });
       });
 
-      // Agregar asíntotas horizontales
-      asintotasH.forEach(ya => {
+      // Agregar asíntota horizontal como línea verde punteada
+      if (asintotaHorizontal !== null) {
         trazas.push({
-          x: [-100, 100],
-          y: [ya, ya],
+          x: [rangoX[0], rangoX[1]],
+          y: [asintotaHorizontal, asintotaHorizontal],
           mode: 'lines',
-          name: `Asíntota horizontal y=${ya}`,
-          line: { dash: 'dot', color: 'green' },
+          name: `Asíntota horizontal en y = ${asintotaHorizontal}`,
+          line: { dash: 'dot', color: 'green', width: 2 },
           hoverinfo: 'none',
           showlegend: false
         });
-      });
+      }
 
+      // Mostrar gráfica
       Plotly.newPlot('grafica', trazas, {
         title: `Gráfica de f(x) = ${expr}`,
-        xaxis: { title: 'x' },
+        xaxis: { title: 'x', range: rangoX },
         yaxis: { title: 'f(x)', range: [-20, 20] }
       });
     }
