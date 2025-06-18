@@ -2,189 +2,90 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Desigualdades con Gráfica</title>
+  <title>Dominio y Rango de una Función</title>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 20px auto;
-      max-width: 700px;
-      background-color: #f9f9f9;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f8;
       padding: 20px;
-      border-radius: 12px;
+      text-align: center;
     }
+
     input, button {
-      width: 100%;
       padding: 10px;
-      font-size: 16px;
-      margin-top: 10px;
+      font-size: 1rem;
+      margin: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
     }
+
     #resultado {
       margin-top: 20px;
-      padding: 15px;
-      background-color: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      font-size: 1.1rem;
     }
-    canvas {
-      margin-top: 20px;
+
+    #grafica {
+      width: 90%;
+      max-width: 800px;
+      margin: auto;
     }
   </style>
 </head>
 <body>
 
-<h2>Resolver desigualdades y graficar</h2>
-<p>Ejemplos: <code>x^2 - 4 > 0</code>, <code>2x - 5 &lt;= 0</code></p>
+  <h1>Calculadora de Dominio y Rango</h1>
+  <p>Escribe una función matemática en términos de <strong>x</strong> (por ejemplo: <code>x^2</code>, <code>sqrt(x)</code>, <code>1/(x-2)</code>)</p>
 
-<input type="text" id="input" placeholder="Escribe la desigualdad aquí...">
-<button onclick="resolver()">Resolver</button>
+  <input type="text" id="funcion" placeholder="Ej: x^2 - 4" />
+  <button onclick="graficar()">Graficar y Calcular</button>
 
-<div id="resultado"></div>
-<canvas id="grafica" width="600" height="400"></canvas>
+  <div id="resultado"></div>
+  <div id="grafica"></div>
 
-<!-- Math.js y Chart.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    function graficar() {
+      const expr = document.getElementById('funcion').value;
+      const f = math.compile(expr);
+      const x_vals = [];
+      const y_vals = [];
 
-<script>
-let chart = null;
-
-function resolver() {
-  const input = document.getElementById("input").value.replace(/\s/g, '');
-  const resultado = document.getElementById("resultado");
-  const match = input.match(/^(.+)([<>]=?|>=|<=)(.+)$/);
-
-  if (!match) {
-    resultado.innerHTML = "⚠️ Usa formato como: x^2 - 4 > 0";
-    return;
-  }
-
-  const izquierda = match[1];
-  const operador = match[2];
-  const derecha = match[3];
-  const expr = `${izquierda}-(${derecha})`;
-
-  let f;
-  try {
-    f = math.simplify(expr);
-  } catch (err) {
-    resultado.innerHTML = "❌ Error en la expresión: " + err.message;
-    return;
-  }
-
-  const exprStr = f.toString();
-  let coef = [];
-  try {
-    coef = math.polyCoefficients(math.parse(exprStr), 'x');
-  } catch {
-    resultado.innerHTML = "❌ Solo se admiten expresiones polinómicas en x.";
-    return;
-  }
-
-  const funcion = math.parse(exprStr).compile();
-  graficar(funcion);
-
-  if (coef.length === 2) {
-    mostrarLineal(coef, operador, resultado);
-  } else if (coef.length === 3) {
-    mostrarCuadratica(coef, operador, resultado);
-  } else {
-    resultado.innerHTML = "❌ Solo se admiten polinomios de grado 1 o 2.";
-  }
-}
-
-function mostrarLineal([m, b], op, div) {
-  if (m === 0) {
-    const cumple = evaluarConstante(b, op);
-    div.innerHTML = `La función es constante: f(x) = ${b}<br>Resultado: ${cumple}`;
-    return;
-  }
-
-  const x = -b / m;
-  let intervalo = "";
-
-  if (op === ">") intervalo = (m > 0) ? `x > ${x}` : `x < ${x}`;
-  if (op === ">=") intervalo = (m > 0) ? `x ≥ ${x}` : `x ≤ ${x}`;
-  if (op === "<") intervalo = (m > 0) ? `x < ${x}` : `x > ${x}`;
-  if (op === "<=") intervalo = (m > 0) ? `x ≤ ${x}` : `x ≥ ${x}`;
-
-  div.innerHTML = `<strong>Solución:</strong> ${intervalo}`;
-}
-
-function mostrarCuadratica([a, b, c], op, div) {
-  const D = b*b - 4*a*c;
-  let mensaje = "";
-
-  if (D < 0) {
-    const cumple = (a > 0 && (op === ">" || op === ">=")) || (a < 0 && (op === "<" || op === "<="));
-    mensaje = cumple ? "La desigualdad se cumple para todo x real." : "No hay solución real.";
-  } else {
-    const x1 = (-b - Math.sqrt(D)) / (2*a);
-    const x2 = (-b + Math.sqrt(D)) / (2*a);
-    const [r1, r2] = [x1, x2].sort((a, b) => a - b);
-    let intervalo = "";
-
-    if (a > 0) {
-      if (op === ">") intervalo = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
-      if (op === ">=") intervalo = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
-      if (op === "<") intervalo = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
-      if (op === "<=") intervalo = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
-    } else {
-      if (op === ">") intervalo = `x ∈ (${r1.toFixed(2)}, ${r2.toFixed(2)})`;
-      if (op === ">=") intervalo = `x ∈ [${r1.toFixed(2)}, ${r2.toFixed(2)}]`;
-      if (op === "<") intervalo = `x < ${r1.toFixed(2)} o x > ${r2.toFixed(2)}`;
-      if (op === "<=") intervalo = `x ≤ ${r1.toFixed(2)} o x ≥ ${r2.toFixed(2)}`;
-    }
-
-    mensaje = `<strong>Raíces:</strong> x₁ = ${r1.toFixed(2)}, x₂ = ${r2.toFixed(2)}<br><strong>Intervalo que satisface la desigualdad:</strong> ${intervalo}`;
-  }
-
-  div.innerHTML = mensaje;
-}
-
-function evaluarConstante(b, op) {
-  const cero = 0;
-  if (op === ">") return b > cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
-  if (op === ">=") return b >= cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
-  if (op === "<") return b < cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
-  if (op === "<=") return b <= cero ? "Se cumple para todo x." : "No se cumple para ningún x.";
-}
-
-function graficar(funcion) {
-  const x_vals = [], y_vals = [];
-  for (let x = -10; x <= 10; x += 0.1) {
-    x_vals.push(x);
-    try {
-      y_vals.push(funcion.evaluate({x}));
-    } catch {
-      y_vals.push(null);
-    }
-  }
-
-  if (chart) chart.destroy();
-  const ctx = document.getElementById('grafica').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: x_vals,
-      datasets: [{
-        label: 'f(x)',
-        data: y_vals,
-        borderColor: 'blue',
-        borderWidth: 2,
-        fill: false,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: 'x' } },
-        y: { title: { display: true, text: 'f(x)' }, beginAtZero: false }
+      for (let x = -100; x <= 100; x += 0.5) {
+        try {
+          const y = f.evaluate({x});
+          if (isFinite(y)) {
+            x_vals.push(x);
+            y_vals.push(y);
+          }
+        } catch (err) {
+          // Punto no válido (por ejemplo división por 0)
+        }
       }
+
+      // Calcular dominio y rango estimados
+      const dominio = `[${Math.min(...x_vals).toFixed(2)}, ${Math.max(...x_vals).toFixed(2)}]`;
+      const rango = `[${Math.min(...y_vals).toFixed(2)}, ${Math.max(...y_vals).toFixed(2)}]`;
+
+      // Mostrar resultado
+      document.getElementById('resultado').innerHTML = `
+        <strong>Dominio estimado:</strong> ${dominio} <br>
+        <strong>Rango estimado:</strong> ${rango}
+      `;
+
+      // Graficar
+      Plotly.newPlot('grafica', [{
+        x: x_vals,
+        y: y_vals,
+        mode: 'lines',
+        line: { color: '#007acc' }
+      }], {
+        title: `Gráfica de f(x) = ${expr}`,
+        xaxis: { title: 'x' },
+        yaxis: { title: 'f(x)' }
+      });
     }
-  });
-}
-</script>
+  </script>
 
 </body>
 </html>
